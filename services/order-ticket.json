@@ -20,7 +20,7 @@
         },
         {
           "type": 10,
-          "content": "\nThank you for ordering with us! We are glad that you decided to order with Optic Studio. Please keep in mind that we do not issue refunds.\n\n# Ordering Details:\nCustomer: {customer}\nDescription: {description}\nBudget: {budget}"
+          "content": "Thank you for ordering with us! We are glad that you decided to order with Optic Studio. Please keep in mind that we do not issue refunds.\n# Ordering Details:\n**Customer:** {customer}\n**Description:** {description}\n**Budget:** {budget}"
         },
         {
           "type": 14,
