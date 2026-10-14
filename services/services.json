@@ -1,0 +1,118 @@
+{
+  "attachments": [],
+  "flags": 32768,
+  "components": [
+    {
+      "id": 1,
+      "type": 17,
+      "accent_color": null,
+      "spoiler": false,
+      "components": [
+        {
+          "id": 2,
+          "type": 12,
+          "items": [
+            {
+              "media": {
+                "url": "https://media.discordapp.net/attachments/1557677042563162144/1557716634100174959/55.png?ex=6ad0106a&is=6acebeea&hm=f4b99c6ee69450498dfcacc58cacba8652ca7ad26c22645b3af51a3f9bff600a&=&format=webp&quality=lossless",
+                "proxy_url": "https://media.discordapp.net/attachments/1551485721561534474/1551486140920631417/ServicesHallo.png?ex=6acfcf51&is=6ace7dd1&hm=08924975a05c81db82bcfca080fd9453715d22c90bb53e279da2f7e9f307fb65&",
+                "width": 1864,
+                "height": 593,
+                "content_type": "image/png"
+              },
+              "description": null,
+              "spoiler": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": 14,
+          "divider": true,
+          "spacing": 2
+        },
+        {
+          "id": 4,
+          "type": 10,
+          "content": "# Services\nGot an idea in mind? Let us bring it to life. Our designers create high-quality, affordable designs made around what you need. we’re here to help turn your ideas into something you’ll be proud of. By placing an order, you agree to our Terms of Service."
+        },
+        {
+          "id": 11,
+          "type": 14,
+          "divider": false,
+          "spacing": 1
+        },
+        {
+          "type": 1,
+          "components": [
+            {
+              "style": 4,
+              "type": 2,
+              "label": "Order Status",
+              "custom_id": "orderStatus",
+              "flow": {
+                "actions": []
+              }
+            },
+            {
+              "style": 2,
+              "type": 2,
+              "label": "Pricing",
+              "custom_id": "pricing"
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "components": [
+            {
+              "type": 3,
+              "options": [
+                {
+                  "label": "Logos",
+                  "value": ""
+                },
+                {
+                  "label": "Banners",
+                  "value": "H9x3R0LVDD"
+                },
+                {
+                  "label": "Bundle (Both)",
+                  "value": "PtKUHnFji8"
+                }
+              ],
+              "placeholder": "Select an order type",
+              "min_values": 1,
+              "max_values": 1,
+              "flows": {},
+              "custom_id": "p_357405728987680769"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": 14,
+          "divider": true,
+          "spacing": 2
+        },
+        {
+          "id": 12,
+          "type": 12,
+          "items": [
+            {
+              "media": {
+                "url": "https://media.discordapp.net/attachments/1557677042563162144/1557716769488248842/63.png?ex=6ad0108a&is=6acebf0a&hm=fe5fffc2fbc147de2560c88e962e883646c72449cc793c080f151d0af4fa429e&=&format=webp&quality=lossless",
+                "proxy_url": "https://media.discordapp.net/attachments/1551485721561534474/1551485998670807131/HallowFooter.png?ex=6acfcf2f&is=6ace7daf&hm=5b23ae882c96a641cf01b53fe15a03599adb6ef1a6331cc02f23dfdeff100fe9&",
+                "width": 1772,
+                "height": 89,
+                "content_type": "image/webp"
+              },
+              "description": null,
+              "spoiler": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
