@@ -3,13 +3,11 @@
   "flags": 32768,
   "components": [
     {
-      "id": 1,
       "type": 17,
       "accent_color": null,
       "spoiler": false,
       "components": [
         {
-          "id": 2,
           "type": 12,
           "items": [
             {
@@ -26,18 +24,15 @@
           ]
         },
         {
-          "id": 3,
           "type": 14,
           "divider": true,
           "spacing": 2
         },
         {
-          "id": 4,
           "type": 10,
           "content": "# Services\nGot an idea in mind? Let us bring it to life. Our designers create high-quality, affordable designs made around what you need. we’re here to help turn your ideas into something you’ll be proud of. By placing an order, you agree to our Terms of Service."
         },
         {
-          "id": 11,
           "type": 14,
           "divider": false,
           "spacing": 1
@@ -86,13 +81,11 @@
           ]
         },
         {
-          "id": 11,
           "type": 14,
           "divider": true,
           "spacing": 2
         },
         {
-          "id": 13,
           "type": 12,
           "items": [
             {
