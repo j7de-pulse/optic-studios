@@ -20,7 +20,7 @@ Only the staff role/user (`STAFF_ID`, default `1556967527093899264`) can:
 - `-rename <new name>`: renames the order channel, keeping its 🔴/🟢 status
 - `-usd <amount>`: sends the customer a bill (`services/payment.json`) with a
   Stripe Checkout **Pay amount** link. Links expire after 23 hours. Needs
-  `STRIPE_SECRET_KEY`
+  `STRIPE_SECRET_KEY`. Only `BILLING_ID` (default `737181735846019112`) can use it
 
 Bot replies live in `RESPONSES` at the top of `src/index.js`.
 

@@ -35,6 +35,8 @@ const {
   ORDER_CATEGORY_ID = '1556970533789245510',
   // Role (or single user) that can see, claim, close and rename every order
   STAFF_ID = '1556967527093899264',
+  // User (or role) allowed to send bills with -usd
+  BILLING_ID = '737181735846019112',
 } = process.env;
 
 if (!DISCORD_TOKEN) {
@@ -239,7 +241,9 @@ const parseTopic = (channel) => {
   return tag === 'order' ? { type, customerId, claimerId } : null;
 };
 
-const isStaff = (member) => member.id === STAFF_ID || member.roles.cache.has(STAFF_ID);
+const hasId = (member, id) => member.id === id || member.roles.cache.has(id);
+const isStaff = (member) => hasId(member, STAFF_ID);
+const canBill = (member) => hasId(member, BILLING_ID);
 
 // STAFF_ID may be a role or a single user; skip it if it's neither in this server
 async function resolveStaffOverwrite(guild) {
@@ -291,7 +295,10 @@ async function closeTicket(interaction) {
   setTimeout(() => interaction.channel.delete().catch(console.error), 5000);
 }
 
-const MESSAGE_COMMANDS = { '-rename': renameTicket, '-usd': sendBill };
+const MESSAGE_COMMANDS = {
+  '-rename': { run: renameTicket, allowed: isStaff },
+  '-usd': { run: sendBill, allowed: canBill },
+};
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.inGuild()) return;
@@ -300,11 +307,11 @@ client.on(Events.MessageCreate, async (message) => {
   const order = parseTopic(message.channel);
   if (!command || !order) return;
   try {
-    if (!isStaff(message.member)) {
+    if (!command.allowed(message.member)) {
       await message.reply(RESPONSES.noPermission);
       return;
     }
-    await command(message, args.join(' '), order);
+    await command.run(message, args.join(' '), order);
   } catch (err) {
     console.error(err);
     await message.reply(`Something went wrong: ${err.message}`).catch(() => {});
