@@ -1,0 +1,54 @@
+{
+  "flags": 32768,
+  "components": [
+    {
+      "type": 17,
+      "components": [
+        {
+          "type": 10,
+          "content": "# Payment Option\nHey {customer}, you've been sent a bill. Press **Pay** below and follow the steps."
+        },
+        {
+          "type": 14,
+          "divider": false,
+          "spacing": 1
+        },
+        {
+          "type": 10,
+          "content": "**Amount:** {amount} (card)"
+        },
+        {
+          "type": 14,
+          "divider": false,
+          "spacing": 1
+        },
+        {
+          "type": 1,
+          "components": [
+            {
+              "style": 5,
+              "type": 2,
+              "label": "Pay amount",
+              "url": "{url}"
+            }
+          ]
+        },
+        {
+          "type": 14,
+          "divider": true,
+          "spacing": 2
+        },
+        {
+          "type": 12,
+          "items": [
+            {
+              "media": {
+                "url": "https://media.discordapp.net/attachments/1557677042563162144/1557716769488248842/63.png?ex=6ad0108a&is=6acebf0a&hm=fe5fffc2fbc147de2560c88e962e883646c72449cc793c080f151d0af4fa429e&=&format=webp&quality=lossless"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

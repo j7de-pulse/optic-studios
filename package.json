@@ -8,7 +8,8 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "discord.js": "^14.19.3"
+    "discord.js": "^14.19.3",
+    "stripe": "^17.7.0"
   },
   "engines": {
     "node": ">=20.12"

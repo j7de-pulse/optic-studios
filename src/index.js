@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import Stripe from 'stripe';
 import {
   ActionRowBuilder,
   ChannelType,
@@ -24,10 +25,13 @@ const loadLayout = (name) =>
 
 const servicesPanel = loadLayout('services');
 const orderTicket = loadLayout('order-ticket');
+const paymentLayout = loadLayout('payment');
 
 // Server IDs aren't secret, so they live here; environment variables override them
 const {
   DISCORD_TOKEN,
+  // Secret key from the Stripe dashboard; -usd is disabled without it
+  STRIPE_SECRET_KEY,
   ORDER_CATEGORY_ID = '1556970533789245510',
   // Role (or single user) that can see, claim, close and rename every order
   STAFF_ID = '1556967527093899264',
@@ -37,6 +41,8 @@ if (!DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN is not set. Add it to your host\'s environment variables or a .env file.');
   process.exit(1);
 }
+
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 // Select menu value -> channel name prefix
 const ORDER_TYPES = {
@@ -53,6 +59,8 @@ const RESPONSES = {
   closing: 'This ticket will be closed in 5 seconds.',
   renamed: (name) => `This ticket has been renamed to **${name}**.`,
   renameUsage: 'Usage: `-rename <new name>`',
+  usdUsage: 'Usage: `-usd <amount>`, for example `-usd 22` or `-usd 22.50`. The minimum is $0.50.',
+  paymentsDisabled: 'Payments are not set up yet. Add `STRIPE_SECRET_KEY` to the bot\'s environment variables.',
   noPermission: 'You do not have permission to do this.',
   botMissingPermissions:
     'I could not create your ticket because I am missing permissions. ' +
@@ -197,7 +205,7 @@ async function openOrderChannel(interaction) {
   await ping.delete().catch(() => {});
 
   await channel.send(
-    buildTicketMessage({
+    fillLayout(orderTicket, {
       customer: `${user}`,
       description: interaction.fields.getTextInputValue('description'),
       budget: interaction.fields.getTextInputValue('budget'),
@@ -207,13 +215,16 @@ async function openOrderChannel(interaction) {
   await interaction.editReply(RESPONSES.opened(channel));
 }
 
-function buildTicketMessage(values) {
-  const message = structuredClone(orderTicket);
+// Copy a layout and replace {placeholders} in its text and URLs
+function fillLayout(layout, values) {
+  const message = structuredClone(layout);
   const fill = (node) => {
     if (Array.isArray(node)) return node.forEach(fill);
     if (node && typeof node === 'object') {
-      if (node.type === 10) {
-        node.content = node.content.replace(/\{(\w+)\}/g, (m, k) => values[k] ?? m);
+      for (const key of ['content', 'url']) {
+        if (typeof node[key] === 'string') {
+          node[key] = node[key].replace(/\{(\w+)\}/g, (m, k) => values[k] ?? m);
+        }
       }
       Object.values(node).forEach(fill);
     }
@@ -280,29 +291,77 @@ async function closeTicket(interaction) {
   setTimeout(() => interaction.channel.delete().catch(console.error), 5000);
 }
 
+const MESSAGE_COMMANDS = { '-rename': renameTicket, '-usd': sendBill };
+
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot || !message.inGuild() || !message.content.startsWith('-rename')) return;
-  if (message.content.split(/\s/)[0] !== '-rename' || !parseTopic(message.channel)) return;
+  if (message.author.bot || !message.inGuild()) return;
+  const [name, ...args] = message.content.trim().split(/\s+/);
+  const command = MESSAGE_COMMANDS[name.toLowerCase()];
+  const order = parseTopic(message.channel);
+  if (!command || !order) return;
   try {
     if (!isStaff(message.member)) {
       await message.reply(RESPONSES.noPermission);
       return;
     }
-    // Discord lowercases text channel names and turns spaces into dashes
-    const newName = message.content.slice('-rename'.length).trim().toLowerCase().replace(/\s+/g, '-');
-    if (!newName) {
-      await message.reply(RESPONSES.renameUsage);
-      return;
-    }
-    // Keep the 🔴/🟢 status in front of the new name
-    const status = message.channel.name.match(/^(🔴|🟢)・/)?.[0] ?? '';
-    const name = `${status}${newName}`.slice(0, 100);
-    await message.reply(RESPONSES.renamed(name));
-    await message.channel.setName(name);
+    await command(message, args.join(' '), order);
   } catch (err) {
     console.error(err);
     await message.reply(`Something went wrong: ${err.message}`).catch(() => {});
   }
 });
+
+async function renameTicket(message, input) {
+  // Discord lowercases text channel names and turns spaces into dashes
+  const newName = input.toLowerCase().replace(/\s+/g, '-');
+  if (!newName) {
+    await message.reply(RESPONSES.renameUsage);
+    return;
+  }
+  // Keep the 🔴/🟢 status in front of the new name
+  const status = message.channel.name.match(/^(🔴|🟢)・/)?.[0] ?? '';
+  const name = `${status}${newName}`.slice(0, 100);
+  await message.reply(RESPONSES.renamed(name));
+  await message.channel.setName(name);
+}
+
+async function sendBill(message, input, order) {
+  if (!stripe) {
+    await message.reply(RESPONSES.paymentsDisabled);
+    return;
+  }
+  const dollars = Number(input.replace(/^\$/, '').replace(/,/g, ''));
+  const cents = Math.round(dollars * 100);
+  // Stripe's minimum card charge is $0.50
+  if (!input || !Number.isFinite(dollars) || cents < 50 || cents > 99999999) {
+    await message.reply(RESPONSES.usdUsage);
+    return;
+  }
+
+  const ticketUrl = message.channel.url;
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          unit_amount: cents,
+          product_data: { name: `Optic Studios ${ORDER_TYPES[order.type]?.label ?? ''} order`.replace(/\s+/g, ' ') },
+        },
+      },
+    ],
+    success_url: ticketUrl,
+    cancel_url: ticketUrl,
+    // Checkout links last at most 24 hours
+    expires_at: Math.floor(Date.now() / 1000) + 23 * 60 * 60,
+    metadata: { channel_id: message.channel.id, customer_id: order.customerId },
+  });
+
+  const amount = (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  await message.channel.send(
+    fillLayout(paymentLayout, { customer: `<@${order.customerId}>`, amount, url: session.url }),
+  );
+}
 
 client.login(DISCORD_TOKEN);
