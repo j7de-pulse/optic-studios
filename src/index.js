@@ -12,6 +12,11 @@ import {
   TextInputStyle,
 } from 'discord.js';
 
+// Read .env when present; hosts that set environment variables in a dashboard won't have one
+try {
+  process.loadEnvFile();
+} catch {}
+
 const loadLayout = (name) =>
   JSON.parse(readFileSync(new URL(`../services/${name}.json`, import.meta.url), 'utf8'));
 
