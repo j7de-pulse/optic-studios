@@ -35,7 +35,7 @@ const {
   ORDER_CATEGORY_ID = '1556970533789245510',
   // Role (or single user) that can see, claim, close and rename every order
   STAFF_ID = '1556967527093899264',
-  // User (or role) allowed to send bills with -usd
+  // User (or role) allowed to send bills with -usd, as well as STAFF_ID
   BILLING_ID = '737181735846019112',
 } = process.env;
 
@@ -61,7 +61,7 @@ const RESPONSES = {
   closing: 'This ticket will be closed in 5 seconds.',
   renamed: (name) => `This ticket has been renamed to **${name}**.`,
   renameUsage: 'Usage: `-rename <new name>`',
-  usdUsage: 'Usage: `-usd <amount>`, for example `-usd 22` or `-usd 22.50`. The minimum is $0.50.',
+  usdUsage: 'Usage: `-usd <@user> <price>`, for example `-usd @bob 22` or `-usd @bob 22.50`. The minimum is $0.50.',
   paymentsDisabled: 'Payments are not set up yet. Add `STRIPE_SECRET_KEY` to the bot\'s environment variables.',
   noPermission: 'You do not have permission to do this.',
   botMissingPermissions:
@@ -243,7 +243,7 @@ const parseTopic = (channel) => {
 
 const hasId = (member, id) => member.id === id || member.roles.cache.has(id);
 const isStaff = (member) => hasId(member, STAFF_ID);
-const canBill = (member) => hasId(member, BILLING_ID);
+const canBill = (member) => hasId(member, BILLING_ID) || isStaff(member);
 
 // STAFF_ID may be a role or a single user; skip it if it's neither in this server
 async function resolveStaffOverwrite(guild) {
@@ -296,8 +296,8 @@ async function closeTicket(interaction) {
 }
 
 const MESSAGE_COMMANDS = {
-  '-rename': { run: renameTicket, allowed: isStaff },
-  '-usd': { run: sendBill, allowed: canBill },
+  '-rename': { run: renameTicket, allowed: isStaff, ticketOnly: true },
+  '-usd': { run: sendBill, allowed: canBill, ticketOnly: false },
 };
 
 client.on(Events.MessageCreate, async (message) => {
@@ -305,7 +305,7 @@ client.on(Events.MessageCreate, async (message) => {
   const [name, ...args] = message.content.trim().split(/\s+/);
   const command = MESSAGE_COMMANDS[name.toLowerCase()];
   const order = parseTopic(message.channel);
-  if (!command || !order) return;
+  if (!command || (command.ticketOnly && !order)) return;
   try {
     if (!command.allowed(message.member)) {
       await message.reply(RESPONSES.noPermission);
@@ -337,10 +337,13 @@ async function sendBill(message, input, order) {
     await message.reply(RESPONSES.paymentsDisabled);
     return;
   }
-  const dollars = Number(input.replace(/^\$/, '').replace(/,/g, ''));
+  // -usd <@user | user id> <price>
+  const [target = '', price = ''] = input.split(/\s+/);
+  const userId = target.match(/^(?:<@!?)?(\d{17,20})>?$/)?.[1];
+  const dollars = Number(price.replace(/^\$/, '').replace(/,/g, ''));
   const cents = Math.round(dollars * 100);
   // Stripe's minimum card charge is $0.50
-  if (!input || !Number.isFinite(dollars) || cents < 50 || cents > 99999999) {
+  if (!userId || !price || !Number.isFinite(dollars) || cents < 50 || cents > 99999999) {
     await message.reply(RESPONSES.usdUsage);
     return;
   }
@@ -354,7 +357,7 @@ async function sendBill(message, input, order) {
         price_data: {
           currency: 'usd',
           unit_amount: cents,
-          product_data: { name: `Optic Studios ${ORDER_TYPES[order.type]?.label ?? ''} order`.replace(/\s+/g, ' ') },
+          product_data: { name: `Optic Studios ${ORDER_TYPES[order?.type]?.label ?? ''} order`.replace(/\s+/g, ' ') },
         },
       },
     ],
@@ -362,13 +365,14 @@ async function sendBill(message, input, order) {
     cancel_url: ticketUrl,
     // Checkout links last at most 24 hours
     expires_at: Math.floor(Date.now() / 1000) + 23 * 60 * 60,
-    metadata: { channel_id: message.channel.id, customer_id: order.customerId },
+    metadata: { channel_id: message.channel.id, customer_id: userId },
   });
 
   const amount = (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-  await message.channel.send(
-    fillLayout(paymentLayout, { customer: `<@${order.customerId}>`, amount, url: session.url }),
-  );
+  await message.channel.send({
+    ...fillLayout(paymentLayout, { customer: `<@${userId}>`, amount, url: session.url }),
+    allowedMentions: { users: [userId] },
+  });
 }
 
 client.login(DISCORD_TOKEN);

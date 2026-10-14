@@ -18,9 +18,10 @@ Only the staff role/user (`STAFF_ID`, default `1556967527093899264`) can:
 - **Claim**: renames the channel to `🟢・<type>-<claimer>`
 - **Close**: deletes the channel after 5 seconds
 - `-rename <new name>`: renames the order channel, keeping its 🔴/🟢 status
-- `-usd <amount>`: sends the customer a bill (`services/payment.json`) with a
-  Stripe Checkout **Pay amount** link. Links expire after 23 hours. Needs
-  `STRIPE_SECRET_KEY`. Only `BILLING_ID` (default `737181735846019112`) can use it
+- `-usd <@user> <price>`: sends that user a bill (`services/payment.json`) that
+  pings them, with a Stripe Checkout **Pay amount** link. Links expire after
+  23 hours. Works in any channel. Needs `STRIPE_SECRET_KEY`. Only `BILLING_ID`
+  (default `737181735846019112`) and `STAFF_ID` can use it
 
 Bot replies live in `RESPONSES` at the top of `src/index.js`.
 
