@@ -3,6 +3,7 @@ import {
   ActionRowBuilder,
   ChannelType,
   Client,
+  ComponentType,
   Events,
   GatewayIntentBits,
   MessageFlags,
@@ -240,6 +241,12 @@ async function resolveStaffOverwrite(guild) {
   return null;
 }
 
+// Wrap text in a Components V2 container (V2 messages can't use plain `content`)
+const v2Container = (text) => ({
+  flags: MessageFlags.IsComponentsV2,
+  components: [{ type: ComponentType.Container, components: [{ type: ComponentType.TextDisplay, content: text }] }],
+});
+
 async function claimTicket(interaction) {
   const { channel, member, user } = interaction;
   const order = parseTopic(channel);
@@ -255,7 +262,7 @@ async function claimTicket(interaction) {
     });
     return;
   }
-  await interaction.reply(RESPONSES.claimed(user));
+  await interaction.reply(v2Container(RESPONSES.claimed(user)));
   // One edit for name and topic: Discord only allows 2 renames per channel every 10 minutes
   await channel.edit({
     name: `🟢・${order.type}-${user.username}`,
