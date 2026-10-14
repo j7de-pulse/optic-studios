@@ -1,0 +1,64 @@
+{
+  "flags": 32768,
+  "components": [
+    {
+      "type": 17,
+      "components": [
+        {
+          "type": 12,
+          "items": [
+            {
+              "media": {
+                "url": "https://media.discordapp.net/attachments/1557677042563162144/1557716679373365258/57.png?ex=6ad01075&is=6acebef5&hm=155941752f1811cc60acf618317e67ae5f6f192e6dd06ebf977f725421866754&=&format=webp&quality=lossless"
+              }
+            }
+          ]
+        },
+        {
+          "type": 14,
+          "spacing": 2
+        },
+        {
+          "type": 10,
+          "content": "\nThank you for ordering with us! We are glad that you decided to order with Optic Studio. Please keep in mind that we do not issue refunds.\n\n# Ordering Details:\nCustomer: {customer}\nDescription: {description}\nBudget: {budget}"
+        },
+        {
+          "type": 14,
+          "divider": false
+        },
+        {
+          "type": 1,
+          "components": [
+            {
+              "style": 3,
+              "type": 2,
+              "custom_id": "ticketClaim",
+              "label": "Claim"
+            },
+            {
+              "style": 4,
+              "type": 2,
+              "label": "Close",
+              "custom_id": "ticketClose"
+            }
+          ]
+        },
+        {
+          "type": 14,
+          "divider": true,
+          "spacing": 2
+        },
+        {
+          "type": 12,
+          "items": [
+            {
+              "media": {
+                "url": "https://media.discordapp.net/attachments/1557677042563162144/1557716769488248842/63.png?ex=6ad0108a&is=6acebf0a&hm=fe5fffc2fbc147de2560c88e962e883646c72449cc793c080f151d0af4fa429e&=&format=webp&quality=lossless"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

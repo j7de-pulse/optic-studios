@@ -49,10 +49,7 @@
               "style": 4,
               "type": 2,
               "label": "Order Status",
-              "custom_id": "orderStatus",
-              "flow": {
-                "actions": []
-              }
+              "custom_id": "orderStatus"
             },
             {
               "style": 2,
@@ -70,22 +67,21 @@
               "options": [
                 {
                   "label": "Logos",
-                  "value": ""
+                  "value": "logos"
                 },
                 {
                   "label": "Banners",
-                  "value": "H9x3R0LVDD"
+                  "value": "banners"
                 },
                 {
                   "label": "Bundle (Both)",
-                  "value": "PtKUHnFji8"
+                  "value": "bundles"
                 }
               ],
               "placeholder": "Select an order type",
               "min_values": 1,
               "max_values": 1,
-              "flows": {},
-              "custom_id": "p_357405728987680769"
+              "custom_id": "openOrder"
             }
           ]
         },
@@ -96,7 +92,7 @@
           "spacing": 2
         },
         {
-          "id": 12,
+          "id": 13,
           "type": 12,
           "items": [
             {

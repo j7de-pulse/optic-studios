@@ -1,0 +1,16 @@
+{
+  "name": "optic-studios-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  },
+  "engines": {
+    "node": ">=20.6"
+  }
+}
