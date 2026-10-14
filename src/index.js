@@ -7,6 +7,7 @@ import {
   GatewayIntentBits,
   MessageFlags,
   ModalBuilder,
+  OverwriteType,
   PermissionFlagsBits,
   TextInputBuilder,
   TextInputStyle,
@@ -27,7 +28,8 @@ const orderTicket = loadLayout('order-ticket');
 const {
   DISCORD_TOKEN,
   ORDER_CATEGORY_ID = '1556970533789245510',
-  STAFF_ROLE_ID = '1559817078754508811',
+  // Role (or single user) that can see, claim, close and rename every order
+  STAFF_ID = '1556967527093899264',
 } = process.env;
 
 if (!DISCORD_TOKEN) {
@@ -42,7 +44,31 @@ const ORDER_TYPES = {
   bundles: { label: 'Bundle (Both)', channel: 'bundles' },
 };
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const RESPONSES = {
+  opened: (channel) => `Your ticket has been opened: ${channel}`,
+  alreadyOpen: (channel) => `You already have an open ticket: ${channel}`,
+  claimed: (user) => `Your ticket has now been claimed by ${user}.`,
+  alreadyClaimed: (user) => `This ticket has already been claimed by ${user}.`,
+  closing: 'This ticket will be closed in 5 seconds.',
+  renamed: (name) => `This ticket has been renamed to **${name}**.`,
+  renameUsage: 'Usage: `-rename <new name>`',
+  noPermission: 'You do not have permission to do this.',
+  botMissingPermissions:
+    'I could not create your ticket because I am missing permissions. ' +
+    'Please ask staff to give my role **Manage Channels** and **Manage Roles**.',
+};
+
+// MessageContent is needed for -rename; enable "Message Content Intent" in the Developer Portal
+const MEMBER_ACCESS = [
+  PermissionFlagsBits.ViewChannel,
+  PermissionFlagsBits.SendMessages,
+  PermissionFlagsBits.AttachFiles,
+  PermissionFlagsBits.ReadMessageHistory,
+];
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+});
 
 client.once(Events.ClientReady, async (c) => {
   await c.application.commands.set([
@@ -119,39 +145,26 @@ async function openOrderChannel(interaction) {
 
   const { guild, user } = interaction;
   const topic = `order:${key}:${user.id}`;
-  const existing = guild.channels.cache.find((ch) => ch.topic === topic);
+  const existing = guild.channels.cache.find((ch) => {
+    const order = ch.topic && parseTopic(ch);
+    return order?.type === key && order.customerId === user.id;
+  });
   if (existing) {
-    await interaction.editReply(`You already have an open ${type.label} order: ${existing}`);
+    await interaction.editReply(RESPONSES.alreadyOpen(existing));
     return;
   }
 
   const permissionOverwrites = [
-    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-    {
-      id: user.id,
-      allow: [
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.ReadMessageHistory,
-      ],
-    },
+    { id: guild.roles.everyone.id, type: OverwriteType.Role, deny: [PermissionFlagsBits.ViewChannel] },
+    { id: user.id, type: OverwriteType.Member, allow: MEMBER_ACCESS },
     {
       id: client.user.id,
+      type: OverwriteType.Member,
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
     },
   ];
-  if (STAFF_ROLE_ID) {
-    permissionOverwrites.push({
-      id: STAFF_ROLE_ID,
-      allow: [
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.AttachFiles,
-        PermissionFlagsBits.ReadMessageHistory,
-      ],
-    });
-  }
+  const staffOverwrite = await resolveStaffOverwrite(guild);
+  if (staffOverwrite) permissionOverwrites.push(staffOverwrite);
 
   const options = {
     name: `🔴・${type.channel}-${user.username}`,
@@ -172,14 +185,15 @@ async function openOrderChannel(interaction) {
   } catch (err) {
     if (err.code === 50013) {
       console.error(err);
-      await interaction.editReply(
-        'I could not create your order channel because I am missing permissions. ' +
-          'Please ask staff to give my role **Manage Channels** and **Manage Roles**.',
-      );
+      await interaction.editReply(RESPONSES.botMissingPermissions);
       return;
     }
     throw err;
   }
+
+  // Ghost ping: notify everyone who can see the ticket, then remove the ping
+  const ping = await channel.send({ content: '@everyone', allowedMentions: { parse: ['everyone'] } });
+  await ping.delete().catch(() => {});
 
   await channel.send(
     buildTicketMessage({
@@ -189,7 +203,7 @@ async function openOrderChannel(interaction) {
     }),
   );
 
-  await interaction.editReply(`Your order channel has been opened: ${channel}`);
+  await interaction.editReply(RESPONSES.opened(channel));
 }
 
 function buildTicketMessage(values) {
@@ -207,28 +221,81 @@ function buildTicketMessage(values) {
   return message;
 }
 
-const isStaff = (member) =>
-  (STAFF_ROLE_ID && member.roles.cache.has(STAFF_ROLE_ID)) ||
-  member.permissions.has(PermissionFlagsBits.ManageChannels);
+// Order channel topic: order:<type>:<customerId>[:<claimerId>]
+const parseTopic = (channel) => {
+  const [tag, type, customerId, claimerId] = channel.topic?.split(':') ?? [];
+  return tag === 'order' ? { type, customerId, claimerId } : null;
+};
+
+const isStaff = (member) => member.id === STAFF_ID || member.roles.cache.has(STAFF_ID);
+
+// STAFF_ID may be a role or a single user; skip it if it's neither in this server
+async function resolveStaffOverwrite(guild) {
+  if (guild.roles.cache.has(STAFF_ID)) {
+    return { id: STAFF_ID, type: OverwriteType.Role, allow: MEMBER_ACCESS };
+  }
+  const member = await guild.members.fetch(STAFF_ID).catch(() => null);
+  if (member) return { id: STAFF_ID, type: OverwriteType.Member, allow: MEMBER_ACCESS };
+  console.warn(`STAFF_ID ${STAFF_ID} is not a role or member in ${guild.name}`);
+  return null;
+}
 
 async function claimTicket(interaction) {
-  if (!isStaff(interaction.member)) {
-    await interaction.reply({ content: 'Only staff can claim orders.', flags: MessageFlags.Ephemeral });
+  const { channel, member, user } = interaction;
+  const order = parseTopic(channel);
+  if (!order) return;
+  if (!isStaff(member)) {
+    await interaction.reply({ content: RESPONSES.noPermission, flags: MessageFlags.Ephemeral });
     return;
   }
-  // 🔴 -> 🟢 marks the order as claimed
-  await interaction.channel.setName(interaction.channel.name.replace('🔴', '🟢'));
-  await interaction.reply(`This order has been claimed by ${interaction.user}.`);
+  if (order.claimerId) {
+    await interaction.reply({
+      content: RESPONSES.alreadyClaimed(`<@${order.claimerId}>`),
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  await interaction.reply(RESPONSES.claimed(user));
+  // One edit for name and topic: Discord only allows 2 renames per channel every 10 minutes
+  await channel.edit({
+    name: `🟢・${order.type}-${user.username}`,
+    topic: `order:${order.type}:${order.customerId}:${user.id}`,
+  });
 }
 
 async function closeTicket(interaction) {
-  const ownerId = interaction.channel.topic?.split(':')[2];
-  if (!isStaff(interaction.member) && interaction.user.id !== ownerId) {
-    await interaction.reply({ content: 'You cannot close this order.', flags: MessageFlags.Ephemeral });
+  if (!parseTopic(interaction.channel)) return;
+  if (!isStaff(interaction.member)) {
+    await interaction.reply({ content: RESPONSES.noPermission, flags: MessageFlags.Ephemeral });
     return;
   }
-  await interaction.reply('Closing this order in 5 seconds...');
+  await interaction.reply(RESPONSES.closing);
   setTimeout(() => interaction.channel.delete().catch(console.error), 5000);
 }
+
+client.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot || !message.inGuild() || !message.content.startsWith('-rename')) return;
+  if (message.content.split(/\s/)[0] !== '-rename' || !parseTopic(message.channel)) return;
+  try {
+    if (!isStaff(message.member)) {
+      await message.reply(RESPONSES.noPermission);
+      return;
+    }
+    // Discord lowercases text channel names and turns spaces into dashes
+    const newName = message.content.slice('-rename'.length).trim().toLowerCase().replace(/\s+/g, '-');
+    if (!newName) {
+      await message.reply(RESPONSES.renameUsage);
+      return;
+    }
+    // Keep the 🔴/🟢 status in front of the new name
+    const status = message.channel.name.match(/^(🔴|🟢)・/)?.[0] ?? '';
+    const name = `${status}${newName}`.slice(0, 100);
+    await message.reply(RESPONSES.renamed(name));
+    await message.channel.setName(name);
+  } catch (err) {
+    console.error(err);
+    await message.reply(`Something went wrong: ${err.message}`).catch(() => {});
+  }
+});
 
 client.login(DISCORD_TOKEN);
