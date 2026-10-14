@@ -72,7 +72,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (err) {
     console.error(err);
-    const reply = { content: 'Something went wrong, please try again.', flags: MessageFlags.Ephemeral };
+    const reply = { content: `Something went wrong: ${err.message}`, flags: MessageFlags.Ephemeral };
     if (interaction.isRepliable()) {
       await (interaction.deferred || interaction.replied
         ? interaction.followUp(reply)
@@ -138,11 +138,7 @@ async function openOrderChannel(interaction) {
     },
     {
       id: client.user.id,
-      allow: [
-        PermissionFlagsBits.ViewChannel,
-        PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.ManageChannels,
-      ],
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
     },
   ];
   if (STAFF_ROLE_ID) {
@@ -157,13 +153,33 @@ async function openOrderChannel(interaction) {
     });
   }
 
-  const channel = await guild.channels.create({
+  const options = {
     name: `🔴・${type.channel}-${user.username}`,
     type: ChannelType.GuildText,
-    parent: ORDER_CATEGORY_ID || null,
     topic,
     permissionOverwrites,
-  });
+  };
+  const category = ORDER_CATEGORY_ID && guild.channels.cache.get(ORDER_CATEGORY_ID);
+  if (category?.type === ChannelType.GuildCategory) {
+    options.parent = category.id;
+  } else if (ORDER_CATEGORY_ID) {
+    console.warn(`ORDER_CATEGORY_ID ${ORDER_CATEGORY_ID} is not a category in ${guild.name}; creating the channel without one`);
+  }
+
+  let channel;
+  try {
+    channel = await guild.channels.create(options);
+  } catch (err) {
+    if (err.code === 50013) {
+      console.error(err);
+      await interaction.editReply(
+        'I could not create your order channel because I am missing permissions. ' +
+          'Please ask staff to give my role **Manage Channels** and **Manage Roles**.',
+      );
+      return;
+    }
+    throw err;
+  }
 
   await channel.send(
     buildTicketMessage({
