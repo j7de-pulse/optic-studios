@@ -17,7 +17,9 @@ customer) deletes the channel.
 ## Setup
 
 1. `npm install`
-2. Copy `.env.example` to `.env` and fill in `DISCORD_TOKEN` (plus the optional
-   `ORDER_CATEGORY_ID` and `STAFF_ROLE_ID`).
+2. Set `DISCORD_TOKEN`, either in your host's environment variables or in a
+   `.env` file (copy `.env.example`). The `.env` file is optional. The order
+   category and staff role IDs are already set in `src/index.js`. Anyone in the
+   server can open an order.
 3. Give the bot the **Manage Channels** and **Manage Roles** permissions.
 4. `npm start`, then run `/services` in the channel where the panel should go.

@@ -23,7 +23,17 @@ const loadLayout = (name) =>
 const servicesPanel = loadLayout('services');
 const orderTicket = loadLayout('order-ticket');
 
-const { DISCORD_TOKEN, ORDER_CATEGORY_ID, STAFF_ROLE_ID } = process.env;
+// Server IDs aren't secret, so they live here; environment variables override them
+const {
+  DISCORD_TOKEN,
+  ORDER_CATEGORY_ID = '1556970533789245510',
+  STAFF_ROLE_ID = '1559817078754508811',
+} = process.env;
+
+if (!DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN is not set. Add it to your host\'s environment variables or a .env file.');
+  process.exit(1);
+}
 
 // Select menu value -> channel name prefix
 const ORDER_TYPES = {
